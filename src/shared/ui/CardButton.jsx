@@ -1,14 +1,4 @@
-export function CardButton({
-  children,
-  className,
-  dataColor,
-  dataPriority,
-  onClick,
-  onDelete,
-  footer,
-  style,
-  ...dragProps
-}) {
+export function CardButton({ children, className, dataColor, dataPriority, onClick, onDelete, footer, style, ...dragProps }) {
   return (
     <button
       type="button"

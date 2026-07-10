@@ -1,27 +1,34 @@
 import { useEffect } from 'react'
 import { useDispatch, useSelector } from 'react-redux'
-import { BoardPanel } from './BoardPanel'
-import { DetailsPanel } from './DetailsPanel'
+import { BoardPanel } from '../../features/story-map-board/ui/BoardPanel'
+import { DetailsPanel } from '../../features/story-map-details/ui/DetailsPanel'
+import { getStoryMapEntity } from '../../entities/story-map/domain/services/entityLookup'
+import { goalPalette, PLANNED_RELEASE_ID } from '../../entities/story-map/domain/constants'
 import {
-  boardReset,
-  entityDeleted,
+  selectStoryMap,
+  selectStoryMapColumns,
+  selectStoryMapReleases,
+  selectStoryMapSteps,
+} from '../../entities/story-map/domain/selectors/storyMapSelectors'
+import {
   goalAdded,
+  goalDeleted,
   goalMoved,
   goalMovedToEnd,
   goalUpdated,
   releaseAdded,
+  releaseDeleted,
   releaseUpdated,
-  selectBoard,
-  selectColumns,
-  selectReleases,
-  selectSteps,
   stepAdded,
+  stepDeleted,
   stepMoved,
   stepUpdated,
   storyAdded,
+  storyDeleted,
   storyMoved,
   storyUpdated,
-} from '../store/boardSlice'
+  storyMapReset,
+} from '../../entities/story-map/application/storyMapSlice'
 import {
   dragEnded,
   dragStarted,
@@ -31,8 +38,7 @@ import {
   selectionDraftPatched,
   selectionSet,
   selectionSynced,
-} from '../store/uiSlice'
-import { getEntity, goalPalette, PLANNED_RELEASE_ID } from '../model/board'
+} from '../../entities/story-map/application/storyMapUiSlice'
 
 function createSelection(mode, type, draft, meta = {}) {
   return { mode, type, draft, ...meta }
@@ -59,23 +65,24 @@ function normalizeDraft(type, draft) {
 
 export function StoryMapPage() {
   const dispatch = useDispatch()
-  const board = useSelector(selectBoard)
-  const columns = useSelector(selectColumns)
-  const steps = useSelector(selectSteps)
-  const releases = useSelector(selectReleases)
+  const storyMap = useSelector(selectStoryMap)
+  const columns = useSelector(selectStoryMapColumns)
+  const steps = useSelector(selectStoryMapSteps)
+  const releases = useSelector(selectStoryMapReleases)
   const selection = useSelector(selectSelection)
   const dragState = useSelector(selectDragState)
+
   useEffect(() => {
     if (!selection || selection.mode !== 'edit') return
 
-    const liveEntity = getEntity(board, selection.type, selection.id)
+    const liveEntity = getStoryMapEntity(storyMap, selection.type, selection.id)
     if (!liveEntity) {
       dispatch(selectionCleared())
       return
     }
 
     dispatch(selectionSynced(liveEntity))
-  }, [board, dispatch, selection?.id, selection?.mode, selection?.type])
+  }, [dispatch, selection?.id, selection?.mode, selection?.type, storyMap])
 
   function submitSelection(event) {
     event.preventDefault()
@@ -100,37 +107,78 @@ export function StoryMapPage() {
     dispatch(selectionCleared())
   }
 
-  function handleDelete(type, id) {
-    dispatch(entityDeleted({ type, id }))
-    if (selection?.type === type && selection?.id === id) {
-      dispatch(selectionCleared())
-    }
+  function openGoalCreate() {
+    dispatch(selectionSet(createSelection('create', 'goal', { name: '', color: goalPalette[storyMap.goals.length % goalPalette.length] })))
+  }
+
+  function openGoalEdit(goal) {
+    dispatch(selectionSet(createSelection('edit', 'goal', { ...goal }, { id: goal.id })))
+  }
+
+  function openStepCreate(goalId) {
+    dispatch(selectionSet(createSelection('create', 'step', { name: '', goalId })))
+  }
+
+  function openStepEdit(goalId, step) {
+    dispatch(selectionSet(createSelection('edit', 'step', { ...step, goalId }, { id: step.id })))
+  }
+
+  function openReleaseCreate() {
+    dispatch(selectionSet(createSelection('create', 'release', { name: '', dueDate: '' })))
+  }
+
+  function openReleaseEdit(release) {
+    dispatch(selectionSet(createSelection('edit', 'release', { ...release }, { id: release.id })))
+  }
+
+  function openStoryCreate(releaseId, stepId) {
+    dispatch(selectionSet(createSelection('create', 'story', { name: '', stepId, releaseId, priority: 'medium' })))
+  }
+
+  function openStoryEdit(story) {
+    const entity = getStoryMapEntity(storyMap, 'story', story.id)
+    if (!entity) return
+    dispatch(selectionSet(createSelection('edit', 'story', { ...entity }, { id: entity.id })))
+  }
+
+  function deleteGoal(id) {
+    dispatch(goalDeleted({ id }))
+    if (selection?.type === 'goal' && selection?.id === id) dispatch(selectionCleared())
+  }
+
+  function deleteStep(id) {
+    dispatch(stepDeleted({ id }))
+    if (selection?.type === 'step' && selection?.id === id) dispatch(selectionCleared())
+  }
+
+  function deleteStory(id) {
+    dispatch(storyDeleted({ id }))
+    if (selection?.type === 'story' && selection?.id === id) dispatch(selectionCleared())
+  }
+
+  function deleteRelease(id) {
+    dispatch(releaseDeleted({ id }))
+    if (selection?.type === 'release' && selection?.id === id) dispatch(selectionCleared())
   }
 
   const actions = {
     resetBoard: () => {
-      dispatch(boardReset())
+      dispatch(storyMapReset())
       dispatch(selectionCleared())
       dispatch(dragEnded())
     },
-    openGoalCreate: () =>
-      dispatch(selectionSet(createSelection('create', 'goal', { name: '', color: goalPalette[board.goals.length % goalPalette.length] }))),
-    openGoalEdit: (goal) => dispatch(selectionSet(createSelection('edit', 'goal', { ...goal }, { id: goal.id }))),
-    deleteGoal: (id) => handleDelete('goal', id),
-    openStepCreate: (goalId) => dispatch(selectionSet(createSelection('create', 'step', { name: '', goalId }))),
-    openStepEdit: (goalId, step) => dispatch(selectionSet(createSelection('edit', 'step', { ...step, goalId }, { id: step.id }))),
-    deleteStep: (id) => handleDelete('step', id),
-    openReleaseCreate: () => dispatch(selectionSet(createSelection('create', 'release', { name: '', dueDate: '' }))),
-    openReleaseEdit: (release) => dispatch(selectionSet(createSelection('edit', 'release', { ...release }, { id: release.id }))),
-    deleteRelease: (id) => handleDelete('release', id),
-    openStoryCreate: (releaseId, stepId) =>
-      dispatch(selectionSet(createSelection('create', 'story', { name: '', stepId, releaseId, priority: 'medium' }))),
-    openStoryEdit: (story) => {
-      const entity = getEntity(board, 'story', story.id)
-      if (!entity) return
-      dispatch(selectionSet(createSelection('edit', 'story', { ...entity }, { id: entity.id })))
-    },
-    deleteStory: (id) => handleDelete('story', id),
+    openGoalCreate,
+    openGoalEdit,
+    deleteGoal,
+    openStepCreate,
+    openStepEdit,
+    deleteStep,
+    openReleaseCreate,
+    openReleaseEdit,
+    deleteRelease,
+    openStoryCreate,
+    openStoryEdit,
+    deleteStory,
     startDrag: (type, id) => dispatch(dragStarted({ type, id })),
     endDrag: () => dispatch(dragEnded()),
     dropGoal: (targetGoalId) => {
@@ -157,16 +205,16 @@ export function StoryMapPage() {
 
   return (
     <div className={`app-shell ${selection ? 'has-sidebar' : ''}`}>
-      <BoardPanel board={board} columns={columns} selection={selection} actions={actions} />
+      <BoardPanel storyMap={storyMap} columns={columns} selection={selection} actions={actions} />
       <DetailsPanel
         selection={selection}
-        goals={board.goals}
+        goals={storyMap.goals}
         steps={steps}
         releases={releases}
         onChange={(patch) => dispatch(selectionDraftPatched(patch))}
         onSubmit={submitSelection}
         onCancel={() => dispatch(selectionCleared())}
-        onDelete={() => selection && handleDelete(selection.type, selection.id)}
+        onDelete={() => selection && actions[`delete${selection.type.charAt(0).toUpperCase()}${selection.type.slice(1)}`]?.(selection.id)}
       />
     </div>
   )

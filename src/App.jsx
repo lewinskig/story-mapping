@@ -1,3 +1,3 @@
-import { StoryMapPage } from './components/StoryMapPage'
+import { StoryMapPage } from './pages/story-map/StoryMapPage'
 
 export default StoryMapPage

@@ -1,4 +1,4 @@
-import { goalPalette, PLANNED_RELEASE_ID } from '../model/board'
+import { goalPalette, PLANNED_RELEASE_ID } from '../../../entities/story-map/domain/constants'
 
 function buttonLabel(mode) {
   return mode === 'create' ? 'Add' : 'Update'

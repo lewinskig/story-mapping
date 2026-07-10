@@ -1,4 +1,4 @@
-import { StorySpacer } from './StorySpacer'
+import { StorySpacer } from '../../../shared/ui/StorySpacer'
 import { StoryCell } from './StoryCell'
 
 export function ReleaseSection({ release, columns, selection, storyGridColumns, onEdit, onDelete, onStoryCreate, onStoryEdit, onStoryDelete, onStartDrag, onEndDrag, onDropStory }) {

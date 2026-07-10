@@ -1,10 +1,9 @@
-import { AddSlot } from './AddSlot'
 import { GoalsLane } from './GoalsLane'
 import { StepsLane } from './StepsLane'
 import { ReleaseSection } from './ReleaseSection'
-import { CARD_WIDTH, COLUMN_GAP } from '../model/board'
+import { CARD_WIDTH, COLUMN_GAP } from '../../../entities/story-map/domain/constants'
 
-export function BoardPanel({ board, columns, selection, actions }) {
+export function BoardPanel({ storyMap, columns, selection, actions }) {
   const headerGridColumns = `repeat(${Math.max(columns.length + 1, 1)}, ${CARD_WIDTH}px)`
   const storyGridColumns = `repeat(${Math.max(columns.length, 1)}, ${CARD_WIDTH}px)`
   const boardWidth = Math.max((columns.length + 1) * (CARD_WIDTH + COLUMN_GAP) - COLUMN_GAP, CARD_WIDTH)
@@ -17,15 +16,20 @@ export function BoardPanel({ board, columns, selection, actions }) {
             <p className="eyebrow">Story mapping</p>
             <h1>Plan goals, steps and stories on one board.</h1>
           </div>
-          <button type="button" className="ghost-button" onClick={actions.resetBoard}>
-            Reset sample board
-          </button>
+          <div className="board-header-actions">
+            <button type="button" className="ghost-button" onClick={actions.openReleaseCreate}>
+              Add release
+            </button>
+            <button type="button" className="ghost-button" onClick={actions.resetBoard}>
+              Reset sample board
+            </button>
+          </div>
         </header>
 
         <div className="board-scroll">
           <div className="board-surface" style={{ minWidth: `${boardWidth + CARD_WIDTH + COLUMN_GAP}px` }}>
             <GoalsLane
-              goals={board.goals}
+              goals={storyMap.goals}
               selection={selection}
               gridTemplateColumns={headerGridColumns}
               onCreate={actions.openGoalCreate}
@@ -49,11 +53,7 @@ export function BoardPanel({ board, columns, selection, actions }) {
               onDropStep={actions.dropStep}
             />
 
-            <section className="release-create-row">
-              <AddSlot label="Add release" onClick={actions.openReleaseCreate} stretch />
-            </section>
-
-            {board.releases.map((release) => (
+            {storyMap.releases.map((release) => (
               <ReleaseSection
                 key={release.id}
                 release={release}

@@ -1,20 +1,21 @@
-import { AddSlot } from './AddSlot'
-import { CardButton } from './CardButton'
+import { AddSlot } from '../../../shared/ui/AddSlot'
+import { CardButton } from '../../../shared/ui/CardButton'
 
 export function GoalsLane({ goals, selection, gridTemplateColumns, onCreate, onEdit, onDelete, onStartDrag, onEndDrag, onDropGoal, onDropGoalToEnd }) {
   return (
     <section className="lane-section">
       <div className="lane-caption">User goals</div>
       <div className="lane-grid" style={{ gridTemplateColumns }}>
-        {goals.map((goal) => {
-          const span = Math.max(goal.steps.length, 0) + 1
+        {goals.flatMap((goal) => {
+          const fillers = Array.from({ length: goal.steps.length }, (_, index) => (
+            <div key={`${goal.id}-spacer-${index}`} className="goal-spacer" aria-hidden="true" />
+          ))
 
-          return (
+          return [
             <CardButton
               key={goal.id}
               className={`goal-card ${selection?.id === goal.id ? 'is-active' : ''}`}
               dataColor={goal.color}
-              style={{ gridColumn: `span ${span}` }}
               onClick={() => onEdit(goal)}
               onDelete={() => onDelete(goal.id)}
               draggable
@@ -27,8 +28,9 @@ export function GoalsLane({ goals, selection, gridTemplateColumns, onCreate, onE
               }}
             >
               {goal.name}
-            </CardButton>
-          )
+            </CardButton>,
+            ...fillers,
+          ]
         })}
         <AddSlot
           label="Add goal"

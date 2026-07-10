@@ -1,5 +1,5 @@
-import { AddSlot } from './AddSlot'
-import { CardButton } from './CardButton'
+import { AddSlot } from '../../../shared/ui/AddSlot'
+import { CardButton } from '../../../shared/ui/CardButton'
 
 export function StepsLane({ columns, selection, gridTemplateColumns, onCreate, onEdit, onDelete, onStartDrag, onEndDrag, onDropStep }) {
   return (

@@ -5,8 +5,8 @@ const initialState = {
   dragState: null,
 }
 
-const uiSlice = createSlice({
-  name: 'ui',
+const storyMapUiSlice = createSlice({
+  name: 'storyMapUi',
   initialState,
   reducers: {
     selectionSet: (state, action) => {
@@ -48,9 +48,9 @@ export const {
   selectionSynced,
   dragStarted,
   dragEnded,
-} = uiSlice.actions
+} = storyMapUiSlice.actions
 
-export default uiSlice.reducer
+export default storyMapUiSlice.reducer
 
-export const selectSelection = (state) => state.ui.selection
-export const selectDragState = (state) => state.ui.dragState
+export const selectSelection = (state) => state.storyMapUi.selection
+export const selectDragState = (state) => state.storyMapUi.dragState

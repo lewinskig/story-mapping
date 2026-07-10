@@ -75,6 +75,13 @@ button,
   border-bottom: 1px solid rgba(148, 163, 184, 0.28);
 }
 
+.board-header-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
 .board-header h1,
 .details-header h2 {
   margin: 6px 0 0;
@@ -178,6 +185,10 @@ button,
 
 .goal-card[data-color='lavender'] {
   background: #ddd6fe;
+}
+
+.goal-spacer {
+  min-height: 1px;
 }
 
 .step-card {
