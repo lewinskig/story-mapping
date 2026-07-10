@@ -1,29 +1,38 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect } from 'react'
+import { useDispatch, useSelector } from 'react-redux'
 import { BoardPanel } from './BoardPanel'
 import { DetailsPanel } from './DetailsPanel'
 import {
-  addGoal,
-  addRelease,
-  addStep,
-  addStory,
-  deleteEntity,
-  getAllSteps,
-  getColumns,
-  getEntity,
-  goalPalette,
-  loadBoard,
-  moveGoal,
-  moveGoalToEnd,
-  moveStep,
-  moveStory,
-  PLANNED_RELEASE_ID,
-  seedBoard,
-  STORAGE_KEY,
-  updateGoal,
-  updateRelease,
-  updateStep,
-  updateStory,
-} from '../model/board'
+  boardReset,
+  entityDeleted,
+  goalAdded,
+  goalMoved,
+  goalMovedToEnd,
+  goalUpdated,
+  releaseAdded,
+  releaseUpdated,
+  selectBoard,
+  selectColumns,
+  selectReleases,
+  selectSteps,
+  stepAdded,
+  stepMoved,
+  stepUpdated,
+  storyAdded,
+  storyMoved,
+  storyUpdated,
+} from '../store/boardSlice'
+import {
+  dragEnded,
+  dragStarted,
+  selectDragState,
+  selectSelection,
+  selectionCleared,
+  selectionDraftPatched,
+  selectionSet,
+  selectionSynced,
+} from '../store/uiSlice'
+import { getEntity, goalPalette, PLANNED_RELEASE_ID } from '../model/board'
 
 function createSelection(mode, type, draft, meta = {}) {
   return { mode, type, draft, ...meta }
@@ -49,37 +58,24 @@ function normalizeDraft(type, draft) {
 }
 
 export function StoryMapPage() {
-  const [board, setBoard] = useState(loadBoard)
-  const [selection, setSelection] = useState(null)
-  const [dragState, setDragState] = useState(null)
-
-  useEffect(() => {
-    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(board))
-  }, [board])
-
+  const dispatch = useDispatch()
+  const board = useSelector(selectBoard)
+  const columns = useSelector(selectColumns)
+  const steps = useSelector(selectSteps)
+  const releases = useSelector(selectReleases)
+  const selection = useSelector(selectSelection)
+  const dragState = useSelector(selectDragState)
   useEffect(() => {
     if (!selection || selection.mode !== 'edit') return
 
-    const entity = getEntity(board, selection.type, selection.id)
-    if (!entity) {
-      setSelection(null)
+    const liveEntity = getEntity(board, selection.type, selection.id)
+    if (!liveEntity) {
+      dispatch(selectionCleared())
       return
     }
 
-    setSelection((current) => {
-      if (!current || current.mode !== 'edit') return current
-      return { ...current, draft: { ...entity } }
-    })
-  }, [board, selection?.id, selection?.mode, selection?.type])
-
-  const columns = useMemo(() => getColumns(board.goals), [board.goals])
-  const steps = useMemo(() => getAllSteps(board.goals), [board.goals])
-
-  function resetBoard() {
-    setBoard(seedBoard)
-    setSelection(null)
-    setDragState(null)
-  }
+    dispatch(selectionSynced(liveEntity))
+  }, [board, dispatch, selection?.id, selection?.mode, selection?.type])
 
   function submitSelection(event) {
     event.preventDefault()
@@ -89,113 +85,74 @@ export function StoryMapPage() {
     if (!draft) return
 
     if (selection.mode === 'create') {
-      if (selection.type === 'goal') setBoard((current) => addGoal(current, draft))
-      if (selection.type === 'step') setBoard((current) => addStep(current, draft))
-      if (selection.type === 'story') setBoard((current) => addStory(current, draft))
-      if (selection.type === 'release') setBoard((current) => addRelease(current, draft))
-      setSelection(null)
+      if (selection.type === 'goal') dispatch(goalAdded(draft))
+      if (selection.type === 'step') dispatch(stepAdded(draft))
+      if (selection.type === 'story') dispatch(storyAdded(draft))
+      if (selection.type === 'release') dispatch(releaseAdded(draft))
+      dispatch(selectionCleared())
       return
     }
 
-    if (selection.type === 'goal') setBoard((current) => updateGoal(current, selection.id, draft))
-    if (selection.type === 'step') setBoard((current) => updateStep(current, selection.id, draft))
-    if (selection.type === 'story') setBoard((current) => updateStory(current, selection.id, draft))
-    if (selection.type === 'release') setBoard((current) => updateRelease(current, selection.id, draft))
-
-    setSelection(null)
+    if (selection.type === 'goal') dispatch(goalUpdated({ id: selection.id, draft }))
+    if (selection.type === 'step') dispatch(stepUpdated({ id: selection.id, draft }))
+    if (selection.type === 'story') dispatch(storyUpdated({ id: selection.id, draft }))
+    if (selection.type === 'release') dispatch(releaseUpdated({ id: selection.id, draft }))
+    dispatch(selectionCleared())
   }
 
   function handleDelete(type, id) {
-    setBoard((current) => deleteEntity(current, type, id))
-    setSelection((current) => (current?.type === type && current?.id === id ? null : current))
-  }
-
-  function openGoalCreate() {
-    setSelection(createSelection('create', 'goal', { name: '', color: goalPalette[board.goals.length % goalPalette.length] }))
-  }
-
-  function openGoalEdit(goal) {
-    setSelection(createSelection('edit', 'goal', { ...goal }, { id: goal.id }))
-  }
-
-  function openStepCreate(goalId) {
-    setSelection(createSelection('create', 'step', { name: '', goalId }))
-  }
-
-  function openStepEdit(goalId, step) {
-    setSelection(createSelection('edit', 'step', { ...step, goalId }, { id: step.id }))
-  }
-
-  function openReleaseCreate() {
-    setSelection(createSelection('create', 'release', { name: '', dueDate: '' }))
-  }
-
-  function openReleaseEdit(release) {
-    setSelection(createSelection('edit', 'release', { ...release }, { id: release.id }))
-  }
-
-  function openStoryCreate(releaseId, stepId) {
-    setSelection(createSelection('create', 'story', { name: '', stepId, releaseId, priority: 'medium' }))
-  }
-
-  function openStoryEdit(story) {
-    const entity = getEntity(board, 'story', story.id)
-    if (!entity) return
-    setSelection(createSelection('edit', 'story', { ...entity }, { id: entity.id }))
-  }
-
-  function startDrag(type, id) {
-    setDragState({ type, id })
-  }
-
-  function endDrag() {
-    setDragState(null)
-  }
-
-  function dropGoal(targetGoalId) {
-    if (!dragState || dragState.type !== 'goal') return
-    setBoard((current) => moveGoal(current, dragState.id, targetGoalId))
-    setDragState(null)
-  }
-
-  function dropGoalToEnd() {
-    if (!dragState || dragState.type !== 'goal') return
-    setBoard((current) => moveGoalToEnd(current, dragState.id))
-    setDragState(null)
-  }
-
-  function dropStep(target) {
-    if (!dragState || dragState.type !== 'step') return
-    setBoard((current) => moveStep(current, dragState.id, target))
-    setDragState(null)
-  }
-
-  function dropStory(target) {
-    if (!dragState || dragState.type !== 'story') return
-    setBoard((current) => moveStory(current, dragState.id, target))
-    setDragState(null)
+    dispatch(entityDeleted({ type, id }))
+    if (selection?.type === type && selection?.id === id) {
+      dispatch(selectionCleared())
+    }
   }
 
   const actions = {
-    resetBoard,
-    openGoalCreate,
-    openGoalEdit,
+    resetBoard: () => {
+      dispatch(boardReset())
+      dispatch(selectionCleared())
+      dispatch(dragEnded())
+    },
+    openGoalCreate: () =>
+      dispatch(selectionSet(createSelection('create', 'goal', { name: '', color: goalPalette[board.goals.length % goalPalette.length] }))),
+    openGoalEdit: (goal) => dispatch(selectionSet(createSelection('edit', 'goal', { ...goal }, { id: goal.id }))),
     deleteGoal: (id) => handleDelete('goal', id),
-    openStepCreate,
-    openStepEdit,
+    openStepCreate: (goalId) => dispatch(selectionSet(createSelection('create', 'step', { name: '', goalId }))),
+    openStepEdit: (goalId, step) => dispatch(selectionSet(createSelection('edit', 'step', { ...step, goalId }, { id: step.id }))),
     deleteStep: (id) => handleDelete('step', id),
-    openReleaseCreate,
-    openReleaseEdit,
+    openReleaseCreate: () => dispatch(selectionSet(createSelection('create', 'release', { name: '', dueDate: '' }))),
+    openReleaseEdit: (release) => dispatch(selectionSet(createSelection('edit', 'release', { ...release }, { id: release.id }))),
     deleteRelease: (id) => handleDelete('release', id),
-    openStoryCreate,
-    openStoryEdit,
+    openStoryCreate: (releaseId, stepId) =>
+      dispatch(selectionSet(createSelection('create', 'story', { name: '', stepId, releaseId, priority: 'medium' }))),
+    openStoryEdit: (story) => {
+      const entity = getEntity(board, 'story', story.id)
+      if (!entity) return
+      dispatch(selectionSet(createSelection('edit', 'story', { ...entity }, { id: entity.id })))
+    },
     deleteStory: (id) => handleDelete('story', id),
-    startDrag,
-    endDrag,
-    dropGoal,
-    dropGoalToEnd,
-    dropStep,
-    dropStory,
+    startDrag: (type, id) => dispatch(dragStarted({ type, id })),
+    endDrag: () => dispatch(dragEnded()),
+    dropGoal: (targetGoalId) => {
+      if (!dragState || dragState.type !== 'goal') return
+      dispatch(goalMoved({ movingId: dragState.id, targetGoalId }))
+      dispatch(dragEnded())
+    },
+    dropGoalToEnd: () => {
+      if (!dragState || dragState.type !== 'goal') return
+      dispatch(goalMovedToEnd({ movingId: dragState.id }))
+      dispatch(dragEnded())
+    },
+    dropStep: (target) => {
+      if (!dragState || dragState.type !== 'step') return
+      dispatch(stepMoved({ movingId: dragState.id, target }))
+      dispatch(dragEnded())
+    },
+    dropStory: (target) => {
+      if (!dragState || dragState.type !== 'story') return
+      dispatch(storyMoved({ movingId: dragState.id, target }))
+      dispatch(dragEnded())
+    },
   }
 
   return (
@@ -205,12 +162,10 @@ export function StoryMapPage() {
         selection={selection}
         goals={board.goals}
         steps={steps}
-        releases={board.releases}
-        onChange={(patch) =>
-          setSelection((current) => (current ? { ...current, draft: { ...current.draft, ...patch } } : current))
-        }
+        releases={releases}
+        onChange={(patch) => dispatch(selectionDraftPatched(patch))}
         onSubmit={submitSelection}
-        onCancel={() => setSelection(null)}
+        onCancel={() => dispatch(selectionCleared())}
         onDelete={() => selection && handleDelete(selection.type, selection.id)}
       />
     </div>
