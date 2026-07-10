@@ -279,11 +279,20 @@ button,
   position: absolute;
   left: 0;
   z-index: 1;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
   padding: 4px 28px 4px 10px;
   border: 1px solid rgba(148, 163, 184, 0.45);
   background: #f8fafc;
   font-size: 0.74rem;
   font-weight: 700;
+}
+
+.release-meta {
+  font-size: 0.64rem;
+  font-weight: 600;
+  color: #64748b;
 }
 
 .release-delete {
@@ -365,7 +374,8 @@ button,
 }
 
 .details-form textarea,
-.details-form select {
+.details-form select,
+.details-form input {
   width: 100%;
   border: 1px solid rgba(148, 163, 184, 0.42);
   background: #ffffff;
