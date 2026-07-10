@@ -1,4 +1,4 @@
-import { AddSlot } from './shared'
+import { AddSlot } from './AddSlot'
 import { GoalsLane } from './GoalsLane'
 import { StepsLane } from './StepsLane'
 import { ReleaseSection } from './ReleaseSection'

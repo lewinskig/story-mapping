@@ -1,4 +1,5 @@
-import { AddSlot, CardButton } from './shared'
+import { AddSlot } from './AddSlot'
+import { CardButton } from './CardButton'
 
 export function GoalsLane({ goals, selection, gridTemplateColumns, onCreate, onEdit, onDelete, onStartDrag, onEndDrag, onDropGoal, onDropGoalToEnd }) {
   return (

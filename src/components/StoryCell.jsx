@@ -1,4 +1,5 @@
-import { AddSlot, CardButton } from './shared'
+import { AddSlot } from './AddSlot'
+import { CardButton } from './CardButton'
 
 export function StoryCell({ stories, isPlanned, selection, onCreate, onEdit, onDelete, onStartDrag, onEndDrag, onDrop }) {
   return (

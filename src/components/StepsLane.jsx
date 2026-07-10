@@ -1,4 +1,5 @@
-import { AddSlot, CardButton } from './shared'
+import { AddSlot } from './AddSlot'
+import { CardButton } from './CardButton'
 
 export function StepsLane({ columns, selection, gridTemplateColumns, onCreate, onEdit, onDelete, onStartDrag, onEndDrag, onDropStep }) {
   return (
