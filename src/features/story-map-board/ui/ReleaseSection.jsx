@@ -7,14 +7,14 @@ export function ReleaseSection({ release, columns, selection, storyGridColumns, 
       <div className="release-line-wrap">
         <button
           type="button"
-          className={`release-label ${selection?.id === release.id ? 'is-active' : ''}`}
+          className={'release-label ' + (selection?.id === release.id ? 'is-active' : '')}
           onClick={() => onEdit(release)}
         >
           {release.name}
           {release.dueDate ? <span className="release-meta">{release.dueDate}</span> : null}
         </button>
         {!release.system ? (
-          <button type="button" className="card-delete release-delete" onClick={() => onDelete(release.id)} aria-label={`Delete ${release.name}`}>
+          <button type="button" className="card-delete release-delete" onClick={() => onDelete(release.id)} aria-label={'Delete ' + release.name}>
             ×
           </button>
         ) : null}
@@ -25,7 +25,7 @@ export function ReleaseSection({ release, columns, selection, storyGridColumns, 
         {columns.map((column) =>
           column.type === 'step' ? (
             <StoryCell
-              key={`${release.id}-${column.id}`}
+              key={release.id + '-' + column.id}
               stories={column.step.stories.filter((story) => story.releaseId === release.id)}
               isPlanned={release.system}
               selection={selection}
@@ -34,10 +34,10 @@ export function ReleaseSection({ release, columns, selection, storyGridColumns, 
               onDelete={onStoryDelete}
               onStartDrag={onStartDrag}
               onEndDrag={onEndDrag}
-              onDrop={(beforeStoryId) => onDropStory({ stepId: column.step.id, releaseId: release.id, beforeStoryId })}
+              onDrop={(target) => onDropStory({ stepId: column.step.id, releaseId: release.id, ...target })}
             />
           ) : (
-            <StorySpacer key={`${release.id}-${column.id}`} />
+            <StorySpacer key={release.id + '-' + column.id} />
           ),
         )}
       </div>

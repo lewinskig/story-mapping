@@ -35,9 +35,12 @@ export function deleteStepFromStoryMap(storyMap, id) {
 }
 
 export function moveStepInStoryMap(storyMap, movingId, target) {
-  const located = findStepInStoryMap(storyMap, movingId)
-  if (!located) return storyMap
+  if (target.position !== 'end' && movingId === target.stepId) return storyMap
 
+  const located = findStepInStoryMap(storyMap, movingId)
+  if (!located || !storyMap.goals.some((goal) => goal.id === target.goalId)) return storyMap
+
+  const movingStep = located.step
   const cleanedGoals = storyMap.goals.map((goal, goalIndex) => ({
     ...goal,
     steps: goalIndex === located.goalIndex ? goal.steps.filter((step) => step.id !== movingId) : goal.steps,
@@ -48,15 +51,16 @@ export function moveStepInStoryMap(storyMap, movingId, target) {
     goals: cleanedGoals.map((goal) => {
       if (goal.id !== target.goalId) return goal
 
-      const movingStep = located.step
-      if (!target.beforeStepId) {
+      if (target.position === 'end') {
         return { ...goal, steps: [...goal.steps, movingStep] }
       }
 
-      const insertIndex = goal.steps.findIndex((step) => step.id === target.beforeStepId)
-      if (insertIndex === -1) {
+      const targetIndex = goal.steps.findIndex((step) => step.id === target.stepId)
+      if (targetIndex === -1) {
         return { ...goal, steps: [...goal.steps, movingStep] }
       }
+
+      const insertIndex = target.position === 'after' ? targetIndex + 1 : targetIndex
 
       return {
         ...goal,

@@ -30,7 +30,7 @@ export function updateStoryInStoryMap(storyMap, id, draft) {
   const next = moveStoryInStoryMap(storyMap, id, {
     stepId: draft.stepId,
     releaseId: draft.releaseId,
-    beforeStoryId: null,
+    position: 'end',
   })
 
   return {
@@ -61,8 +61,13 @@ export function deleteStoryFromStoryMap(storyMap, id) {
 }
 
 export function moveStoryInStoryMap(storyMap, movingId, target) {
+  if (target.position !== 'end' && movingId === target.storyId) return storyMap
+
   const located = findStoryInStoryMap(storyMap, movingId)
   if (!located) return storyMap
+
+  const targetStepExists = storyMap.goals.some((goal) => goal.steps.some((step) => step.id === target.stepId))
+  if (!targetStepExists) return storyMap
 
   const movingStory = { ...located.story, releaseId: target.releaseId }
   const goalsWithoutStory = storyMap.goals.map((goal, goalIndex) => ({
@@ -83,14 +88,16 @@ export function moveStoryInStoryMap(storyMap, movingId, target) {
       steps: goal.steps.map((step) => {
         if (step.id !== target.stepId) return step
 
-        if (!target.beforeStoryId) {
+        if (target.position === 'end') {
           return { ...step, stories: [...step.stories, movingStory] }
         }
 
-        const insertIndex = step.stories.findIndex((story) => story.id === target.beforeStoryId)
-        if (insertIndex === -1) {
+        const targetIndex = step.stories.findIndex((story) => story.id === target.storyId)
+        if (targetIndex === -1) {
           return { ...step, stories: [...step.stories, movingStory] }
         }
+
+        const insertIndex = target.position === 'after' ? targetIndex + 1 : targetIndex
 
         return {
           ...step,

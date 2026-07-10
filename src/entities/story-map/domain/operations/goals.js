@@ -21,29 +21,24 @@ export function deleteGoalFromStoryMap(storyMap, id) {
   }
 }
 
-export function moveGoalInStoryMap(storyMap, movingId, targetGoalId) {
-  if (movingId === targetGoalId) return storyMap
+export function moveGoalInStoryMap(storyMap, movingId, target) {
+  if (target.position !== 'end' && movingId === target.goalId) return storyMap
 
-  const fromIndex = storyMap.goals.findIndex((goal) => goal.id === movingId)
-  const targetIndex = storyMap.goals.findIndex((goal) => goal.id === targetGoalId)
-  if (fromIndex === -1 || targetIndex === -1) return storyMap
+  const moving = storyMap.goals.find((goal) => goal.id === movingId)
+  if (!moving) return storyMap
 
-  const moving = storyMap.goals[fromIndex]
   const remaining = storyMap.goals.filter((goal) => goal.id !== movingId)
-  const adjustedTarget = fromIndex < targetIndex ? targetIndex : targetIndex - 1
+  const targetIndex = target.position === 'end' ? remaining.length : remaining.findIndex((goal) => goal.id === target.goalId)
+  if (targetIndex === -1) return storyMap
+
+  const insertIndex = target.position === 'after' ? targetIndex + 1 : targetIndex
 
   return {
     ...storyMap,
-    goals: [...remaining.slice(0, adjustedTarget + 1), moving, ...remaining.slice(adjustedTarget + 1)],
+    goals: [...remaining.slice(0, insertIndex), moving, ...remaining.slice(insertIndex)],
   }
 }
 
 export function moveGoalToEndInStoryMap(storyMap, movingId) {
-  const moving = storyMap.goals.find((goal) => goal.id === movingId)
-  if (!moving) return storyMap
-
-  return {
-    ...storyMap,
-    goals: [...storyMap.goals.filter((goal) => goal.id !== movingId), moving],
-  }
+  return moveGoalInStoryMap(storyMap, movingId, { position: 'end' })
 }

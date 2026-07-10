@@ -1,6 +1,11 @@
 import { AddSlot } from '../../../shared/ui/AddSlot'
 import { CardButton } from '../../../shared/ui/CardButton'
 
+function getHorizontalDropPosition(event) {
+  const rect = event.currentTarget.getBoundingClientRect()
+  return event.clientX < rect.left + rect.width / 2 ? 'before' : 'after'
+}
+
 export function StepsLane({ columns, selection, gridTemplateColumns, onCreate, onEdit, onDelete, onStartDrag, onEndDrag, onDropStep }) {
   return (
     <section className="lane-section">
@@ -10,16 +15,16 @@ export function StepsLane({ columns, selection, gridTemplateColumns, onCreate, o
           column.type === 'step' ? (
             <CardButton
               key={column.id}
-              className={`step-card ${selection?.id === column.step.id ? 'is-active' : ''}`}
+              className={'step-card ' + (selection?.id === column.step.id ? 'is-active' : '')}
               onClick={() => onEdit(column.goal.id, column.step)}
               onDelete={() => onDelete(column.step.id)}
               draggable
-              onDragStart={() => onStartDrag('step', column.step.id)}
+              onDragStart={(event) => onStartDrag('step', column.step.id, event)}
               onDragEnd={onEndDrag}
               onDragOver={(event) => event.preventDefault()}
               onDrop={(event) => {
                 event.preventDefault()
-                onDropStep({ goalId: column.goal.id, beforeStepId: column.step.id })
+                onDropStep({ goalId: column.goal.id, stepId: column.step.id, position: getHorizontalDropPosition(event) })
               }}
             >
               {column.step.name}
@@ -32,7 +37,7 @@ export function StepsLane({ columns, selection, gridTemplateColumns, onCreate, o
               onDragOver={(event) => event.preventDefault()}
               onDrop={(event) => {
                 event.preventDefault()
-                onDropStep({ goalId: column.goalId, beforeStepId: null })
+                onDropStep({ goalId: column.goalId, position: 'end' })
               }}
             />
           ),

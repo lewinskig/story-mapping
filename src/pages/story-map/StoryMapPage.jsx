@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { useDispatch, useSelector } from 'react-redux'
 import { BoardPanel } from '../../features/story-map-board/ui/BoardPanel'
 import { DetailsPanel } from '../../features/story-map-details/ui/DetailsPanel'
@@ -14,7 +14,6 @@ import {
   goalAdded,
   goalDeleted,
   goalMoved,
-  goalMovedToEnd,
   goalUpdated,
   releaseAdded,
   releaseDeleted,
@@ -30,9 +29,6 @@ import {
   storyMapReset,
 } from '../../entities/story-map/application/storyMapSlice'
 import {
-  dragEnded,
-  dragStarted,
-  selectDragState,
   selectSelection,
   selectionCleared,
   selectionDraftPatched,
@@ -70,7 +66,7 @@ export function StoryMapPage() {
   const steps = useSelector(selectStoryMapSteps)
   const releases = useSelector(selectStoryMapReleases)
   const selection = useSelector(selectSelection)
-  const dragState = useSelector(selectDragState)
+  const [dragState, setDragState] = useState(null)
 
   useEffect(() => {
     if (!selection || selection.mode !== 'edit') return
@@ -161,11 +157,21 @@ export function StoryMapPage() {
     if (selection?.type === 'release' && selection?.id === id) dispatch(selectionCleared())
   }
 
+  function startDrag(type, id, event) {
+    event.dataTransfer.effectAllowed = 'move'
+    event.dataTransfer.setData('text/plain', type + ':' + id)
+    setDragState({ type, id })
+  }
+
+  function endDrag() {
+    setDragState(null)
+  }
+
   const actions = {
     resetBoard: () => {
       dispatch(storyMapReset())
       dispatch(selectionCleared())
-      dispatch(dragEnded())
+      setDragState(null)
     },
     openGoalCreate,
     openGoalEdit,
@@ -179,32 +185,33 @@ export function StoryMapPage() {
     openStoryCreate,
     openStoryEdit,
     deleteStory,
-    startDrag: (type, id) => dispatch(dragStarted({ type, id })),
-    endDrag: () => dispatch(dragEnded()),
-    dropGoal: (targetGoalId) => {
+    startDrag,
+    endDrag,
+    dropGoal: (target) => {
       if (!dragState || dragState.type !== 'goal') return
-      dispatch(goalMoved({ movingId: dragState.id, targetGoalId }))
-      dispatch(dragEnded())
-    },
-    dropGoalToEnd: () => {
-      if (!dragState || dragState.type !== 'goal') return
-      dispatch(goalMovedToEnd({ movingId: dragState.id }))
-      dispatch(dragEnded())
+      dispatch(goalMoved({ movingId: dragState.id, target }))
+      setDragState(null)
     },
     dropStep: (target) => {
       if (!dragState || dragState.type !== 'step') return
       dispatch(stepMoved({ movingId: dragState.id, target }))
-      dispatch(dragEnded())
+      setDragState(null)
     },
     dropStory: (target) => {
       if (!dragState || dragState.type !== 'story') return
       dispatch(storyMoved({ movingId: dragState.id, target }))
-      dispatch(dragEnded())
+      setDragState(null)
     },
   }
 
+  const deleteSelection = () => {
+    if (!selection) return
+    const actionName = 'delete' + selection.type.charAt(0).toUpperCase() + selection.type.slice(1)
+    actions[actionName]?.(selection.id)
+  }
+
   return (
-    <div className={`app-shell ${selection ? 'has-sidebar' : ''}`}>
+    <div className={'app-shell ' + (selection ? 'has-sidebar' : '')}>
       <BoardPanel storyMap={storyMap} columns={columns} selection={selection} actions={actions} />
       <DetailsPanel
         selection={selection}
@@ -214,7 +221,7 @@ export function StoryMapPage() {
         onChange={(patch) => dispatch(selectionDraftPatched(patch))}
         onSubmit={submitSelection}
         onCancel={() => dispatch(selectionCleared())}
-        onDelete={() => selection && actions[`delete${selection.type.charAt(0).toUpperCase()}${selection.type.slice(1)}`]?.(selection.id)}
+        onDelete={deleteSelection}
       />
     </div>
   )

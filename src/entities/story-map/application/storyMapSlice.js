@@ -66,7 +66,7 @@ const storyMapSlice = createSlice({
       state.board = deleteReleaseFromStoryMap(state.board, action.payload.id)
     },
     goalMoved: (state, action) => {
-      state.board = moveGoalInStoryMap(state.board, action.payload.movingId, action.payload.targetGoalId)
+      state.board = moveGoalInStoryMap(state.board, action.payload.movingId, action.payload.target)
     },
     goalMovedToEnd: (state, action) => {
       state.board = moveGoalToEndInStoryMap(state.board, action.payload.movingId)

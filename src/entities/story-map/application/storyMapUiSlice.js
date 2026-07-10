@@ -2,7 +2,6 @@ import { createSlice } from '@reduxjs/toolkit'
 
 const initialState = {
   selection: null,
-  dragState: null,
 }
 
 const storyMapUiSlice = createSlice({
@@ -32,12 +31,6 @@ const storyMapUiSlice = createSlice({
         draft: action.payload,
       }
     },
-    dragStarted: (state, action) => {
-      state.dragState = action.payload
-    },
-    dragEnded: (state) => {
-      state.dragState = null
-    },
   },
 })
 
@@ -46,11 +39,8 @@ export const {
   selectionCleared,
   selectionDraftPatched,
   selectionSynced,
-  dragStarted,
-  dragEnded,
 } = storyMapUiSlice.actions
 
 export default storyMapUiSlice.reducer
 
 export const selectSelection = (state) => state.storyMapUi.selection
-export const selectDragState = (state) => state.storyMapUi.dragState

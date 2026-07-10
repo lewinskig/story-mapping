@@ -38,7 +38,6 @@ export function BoardPanel({ storyMap, columns, selection, actions }) {
               onStartDrag={actions.startDrag}
               onEndDrag={actions.endDrag}
               onDropGoal={actions.dropGoal}
-              onDropGoalToEnd={actions.dropGoalToEnd}
             />
 
             <StepsLane

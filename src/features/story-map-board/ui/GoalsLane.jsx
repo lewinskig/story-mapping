@@ -1,30 +1,35 @@
 import { AddSlot } from '../../../shared/ui/AddSlot'
 import { CardButton } from '../../../shared/ui/CardButton'
 
-export function GoalsLane({ goals, selection, gridTemplateColumns, onCreate, onEdit, onDelete, onStartDrag, onEndDrag, onDropGoal, onDropGoalToEnd }) {
+function getHorizontalDropPosition(event) {
+  const rect = event.currentTarget.getBoundingClientRect()
+  return event.clientX < rect.left + rect.width / 2 ? 'before' : 'after'
+}
+
+export function GoalsLane({ goals, selection, gridTemplateColumns, onCreate, onEdit, onDelete, onStartDrag, onEndDrag, onDropGoal }) {
   return (
     <section className="lane-section">
       <div className="lane-caption">User goals</div>
       <div className="lane-grid" style={{ gridTemplateColumns }}>
         {goals.flatMap((goal) => {
           const fillers = Array.from({ length: goal.steps.length }, (_, index) => (
-            <div key={`${goal.id}-spacer-${index}`} className="goal-spacer" aria-hidden="true" />
+            <div key={goal.id + '-spacer-' + index} className="goal-spacer" aria-hidden="true" />
           ))
 
           return [
             <CardButton
               key={goal.id}
-              className={`goal-card ${selection?.id === goal.id ? 'is-active' : ''}`}
+              className={'goal-card ' + (selection?.id === goal.id ? 'is-active' : '')}
               dataColor={goal.color}
               onClick={() => onEdit(goal)}
               onDelete={() => onDelete(goal.id)}
               draggable
-              onDragStart={() => onStartDrag('goal', goal.id)}
+              onDragStart={(event) => onStartDrag('goal', goal.id, event)}
               onDragEnd={onEndDrag}
               onDragOver={(event) => event.preventDefault()}
               onDrop={(event) => {
                 event.preventDefault()
-                onDropGoal(goal.id)
+                onDropGoal({ goalId: goal.id, position: getHorizontalDropPosition(event) })
               }}
             >
               {goal.name}
@@ -38,7 +43,7 @@ export function GoalsLane({ goals, selection, gridTemplateColumns, onCreate, onE
           onDragOver={(event) => event.preventDefault()}
           onDrop={(event) => {
             event.preventDefault()
-            onDropGoalToEnd()
+            onDropGoal({ position: 'end' })
           }}
         />
       </div>
