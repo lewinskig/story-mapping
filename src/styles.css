@@ -41,7 +41,7 @@ button,
 .details-panel,
 .ghost-button,
 .primary-button,
-.danger-button {
+.danger-link {
   border-radius: 0;
 }
 
@@ -131,9 +131,10 @@ button,
 }
 
 .card {
+  position: relative;
   width: 100%;
   min-height: 74px;
-  padding: 10px 10px 8px;
+  padding: 10px 28px 8px 10px;
   display: flex;
   flex-direction: column;
   justify-content: space-between;
@@ -232,12 +233,29 @@ button,
   letter-spacing: 0.08em;
 }
 
-.release-band {
-  margin-bottom: 16px;
+.card-delete {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border: 1px solid rgba(100, 116, 139, 0.24);
+  background: rgba(255, 255, 255, 0.75);
+  color: #64748b;
+  font-size: 0.8rem;
+  line-height: 1;
 }
 
-.story-grid-top {
-  margin-bottom: 5px;
+.card-delete:hover {
+  border-color: rgba(220, 38, 38, 0.4);
+  color: #dc2626;
+}
+
+.release-band {
+  margin-bottom: 16px;
 }
 
 .story-grid-bottom {
@@ -261,11 +279,19 @@ button,
   position: absolute;
   left: 0;
   z-index: 1;
-  padding: 4px 10px;
+  padding: 4px 28px 4px 10px;
   border: 1px solid rgba(148, 163, 184, 0.45);
   background: #f8fafc;
   font-size: 0.74rem;
   font-weight: 700;
+}
+
+.release-delete {
+  top: 7px;
+  right: auto;
+  left: max-content;
+  z-index: 2;
+  margin-left: 6px;
 }
 
 .story-cell {
@@ -275,9 +301,10 @@ button,
   gap: 8px;
 }
 
-.story-cell-empty {
-  border: none;
+.story-spacer {
   background: transparent;
+  border: 0;
+  pointer-events: none;
 }
 
 .story-card {
@@ -357,8 +384,7 @@ button,
 }
 
 .primary-button,
-.ghost-button,
-.danger-button {
+.ghost-button {
   border: 1px solid rgba(148, 163, 184, 0.35);
   padding: 10px 14px;
   font-size: 0.82rem;
@@ -372,8 +398,17 @@ button,
   color: #ffffff;
 }
 
-.danger-button {
-  border-color: #dc2626;
+.danger-zone {
+  margin-top: 18px;
+  padding-top: 14px;
+  border-top: 1px solid rgba(148, 163, 184, 0.24);
+}
+
+.danger-link {
+  border: none;
+  background: transparent;
+  padding: 0;
+  font-size: 0.74rem;
   color: #dc2626;
 }
 

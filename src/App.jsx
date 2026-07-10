@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 
-const STORAGE_KEY = 'story-mapping-board-v3'
+const STORAGE_KEY = 'story-mapping-board-v4'
 const CARD_WIDTH = 144
 const COLUMN_GAP = 12
 const goalPalette = ['sky', 'mint', 'peach', 'gold', 'lavender']
@@ -25,70 +25,14 @@ const seedData = {
     { id: 'r2', title: 'Release 2' },
   ],
   stories: [
-    {
-      id: 'st1',
-      releaseId: 'r1',
-      stepId: 's1',
-      title: 'View restaurant list',
-      priority: 'high',
-      side: 'below',
-    },
-    {
-      id: 'st2',
-      releaseId: 'r1',
-      stepId: 's2',
-      title: 'Browse menu categories',
-      priority: 'high',
-      side: 'below',
-    },
-    {
-      id: 'st3',
-      releaseId: 'r1',
-      stepId: 's3',
-      title: 'Add items to cart',
-      priority: 'medium',
-      side: 'below',
-    },
-    {
-      id: 'st4',
-      releaseId: 'r1',
-      stepId: 's4',
-      title: 'Track order in real time',
-      priority: 'high',
-      side: 'above',
-    },
-    {
-      id: 'st5',
-      releaseId: 'r1',
-      stepId: 's6',
-      title: 'Access contact details',
-      priority: 'medium',
-      side: 'below',
-    },
-    {
-      id: 'st6',
-      releaseId: 'r2',
-      stepId: 's2',
-      title: 'Customize food item',
-      priority: 'low',
-      side: 'below',
-    },
-    {
-      id: 'st7',
-      releaseId: 'r2',
-      stepId: 's4',
-      title: 'Receive delivery notifications',
-      priority: 'medium',
-      side: 'below',
-    },
-    {
-      id: 'st8',
-      releaseId: 'r2',
-      stepId: 's7',
-      title: 'Submit feedback or suggestions',
-      priority: 'low',
-      side: 'above',
-    },
+    { id: 'st1', releaseId: null, stepId: 's1', title: 'View restaurant list', priority: 'high' },
+    { id: 'st2', releaseId: null, stepId: 's2', title: 'Browse menu categories', priority: 'high' },
+    { id: 'st3', releaseId: 'r1', stepId: 's3', title: 'Add items to cart', priority: 'medium' },
+    { id: 'st4', releaseId: 'r1', stepId: 's4', title: 'Track order in real time', priority: 'high' },
+    { id: 'st5', releaseId: 'r1', stepId: 's6', title: 'Access contact details', priority: 'medium' },
+    { id: 'st6', releaseId: 'r2', stepId: 's2', title: 'Customize food item', priority: 'low' },
+    { id: 'st7', releaseId: 'r2', stepId: 's4', title: 'Receive delivery notifications', priority: 'medium' },
+    { id: 'st8', releaseId: null, stepId: 's7', title: 'Submit feedback or suggestions', priority: 'low' },
   ],
 }
 
@@ -133,34 +77,62 @@ function buttonLabel(mode) {
   return mode === 'create' ? 'Add' : 'Update'
 }
 
-function moveBefore(items, movingId, targetId, patch = {}) {
-  if (movingId === targetId) {
-    return items
-  }
+function getEntity(board, type, id) {
+  if (!id) return null
+  if (type === 'goal') return board.goals.find((item) => item.id === id) || null
+  if (type === 'step') return board.steps.find((item) => item.id === id) || null
+  if (type === 'release') return board.releases.find((item) => item.id === id) || null
+  if (type === 'story') return board.stories.find((item) => item.id === id) || null
+  return null
+}
 
-  const moving = items.find((item) => item.id === movingId)
-  const targetIndex = items.findIndex((item) => item.id === targetId)
+function moveGoal(goals, movingId, targetId) {
+  if (movingId === targetId) return goals
 
-  if (!moving || targetIndex === -1) {
-    return items
-  }
+  const fromIndex = goals.findIndex((goal) => goal.id === movingId)
+  const targetIndex = goals.findIndex((goal) => goal.id === targetId)
 
-  const remaining = items.filter((item) => item.id !== movingId)
-  const insertIndex = remaining.findIndex((item) => item.id === targetId)
+  if (fromIndex === -1 || targetIndex === -1) return goals
+
+  const moving = goals[fromIndex]
+  const remaining = goals.filter((goal) => goal.id !== movingId)
+  const adjustedTarget = fromIndex < targetIndex ? targetIndex : targetIndex - 1
 
   return [
-    ...remaining.slice(0, insertIndex),
+    ...remaining.slice(0, adjustedTarget + 1),
+    moving,
+    ...remaining.slice(adjustedTarget + 1),
+  ]
+}
+
+function moveToEnd(items, movingId) {
+  const moving = items.find((item) => item.id === movingId)
+  if (!moving) return items
+  const remaining = items.filter((item) => item.id !== movingId)
+  return [...remaining, moving]
+}
+
+function moveBefore(items, movingId, targetId, patch = {}) {
+  if (movingId === targetId) return items
+
+  const moving = items.find((item) => item.id === movingId)
+  const insertIndex = items.findIndex((item) => item.id === targetId)
+
+  if (!moving || insertIndex === -1) return items
+
+  const remaining = items.filter((item) => item.id !== movingId)
+  const nextIndex = remaining.findIndex((item) => item.id === targetId)
+
+  return [
+    ...remaining.slice(0, nextIndex),
     { ...moving, ...patch },
-    ...remaining.slice(insertIndex),
+    ...remaining.slice(nextIndex),
   ]
 }
 
 function appendStepToGoal(steps, movingId, goalId) {
   const moving = steps.find((step) => step.id === movingId)
-
-  if (!moving) {
-    return steps
-  }
+  if (!moving) return steps
 
   const remaining = steps.filter((step) => step.id !== movingId)
   const updated = { ...moving, goalId }
@@ -181,17 +153,13 @@ function appendStepToGoal(steps, movingId, goalId) {
 
 function moveStory(stories, movingId, target) {
   const moving = stories.find((story) => story.id === movingId)
-
-  if (!moving) {
-    return stories
-  }
+  if (!moving) return stories
 
   const remaining = stories.filter((story) => story.id !== movingId)
   const updated = {
     ...moving,
     releaseId: target.releaseId,
     stepId: target.stepId,
-    side: target.side,
   }
 
   if (target.beforeStoryId) {
@@ -207,9 +175,7 @@ function moveStory(stories, movingId, target) {
   }
 
   const lastMatch = remaining.reduce((lastIndex, story, index) => {
-    return story.releaseId === target.releaseId && story.stepId === target.stepId && story.side === target.side
-      ? index
-      : lastIndex
+    return story.releaseId === target.releaseId && story.stepId === target.stepId ? index : lastIndex
   }, -1)
 
   if (lastMatch === -1) {
@@ -232,7 +198,23 @@ function App() {
     window.localStorage.setItem(STORAGE_KEY, JSON.stringify(board))
   }, [board])
 
+  useEffect(() => {
+    if (!selection || selection.mode !== 'edit') return
+
+    const entity = getEntity(board, selection.type, selection.id)
+    if (!entity) {
+      setSelection(null)
+      return
+    }
+
+    setSelection((current) => {
+      if (!current || current.mode !== 'edit') return current
+      return { ...current, draft: { ...entity } }
+    })
+  }, [board, selection?.id, selection?.mode, selection?.type])
+
   const columns = useMemo(() => buildColumns(board.goals, board.steps), [board.goals, board.steps])
+  const stepColumns = useMemo(() => columns.filter((column) => column.type === 'step'), [columns])
   const realSteps = useMemo(
     () => board.goals.flatMap((goal) => board.steps.filter((step) => step.goalId === goal.id)),
     [board.goals, board.steps],
@@ -249,12 +231,7 @@ function App() {
   }
 
   function openGoalCreate() {
-    setSelection(
-      createSelection('create', 'goal', {
-        title: '',
-        color: goalPalette[board.goals.length % goalPalette.length],
-      }),
-    )
+    setSelection(createSelection('create', 'goal', { title: '', color: goalPalette[board.goals.length % goalPalette.length] }))
   }
 
   function openGoalEdit(goal) {
@@ -277,16 +254,8 @@ function App() {
     setSelection(createSelection('edit', 'release', { ...release }, { id: release.id }))
   }
 
-  function openStoryCreate(releaseId, stepId, side) {
-    setSelection(
-      createSelection('create', 'story', {
-        title: '',
-        releaseId,
-        stepId,
-        side,
-        priority: 'medium',
-      }),
-    )
+  function openStoryCreate(releaseId, stepId) {
+    setSelection(createSelection('create', 'story', { title: '', releaseId, stepId, priority: 'medium' }))
   }
 
   function openStoryEdit(story) {
@@ -306,33 +275,17 @@ function App() {
 
     if (selection.mode === 'create') {
       if (selection.type === 'goal') {
-        setBoard((current) => ({
-          ...current,
-          goals: [...current.goals, { id: uid('goal'), ...draft }],
-        }))
+        setBoard((current) => ({ ...current, goals: [...current.goals, { id: uid('goal'), ...draft }] }))
       }
-
       if (selection.type === 'step') {
-        setBoard((current) => ({
-          ...current,
-          steps: [...current.steps, { id: uid('step'), ...draft }],
-        }))
+        setBoard((current) => ({ ...current, steps: [...current.steps, { id: uid('step'), ...draft }] }))
       }
-
       if (selection.type === 'release') {
-        setBoard((current) => ({
-          ...current,
-          releases: [{ id: uid('release'), ...draft }, ...current.releases],
-        }))
+        setBoard((current) => ({ ...current, releases: [{ id: uid('release'), ...draft }, ...current.releases] }))
       }
-
       if (selection.type === 'story') {
-        setBoard((current) => ({
-          ...current,
-          stories: [...current.stories, { id: uid('story'), ...draft }],
-        }))
+        setBoard((current) => ({ ...current, stories: [...current.stories, { id: uid('story'), ...draft }] }))
       }
-
       setSelection(null)
       return
     }
@@ -343,23 +296,18 @@ function App() {
         goals: current.goals.map((goal) => (goal.id === selection.id ? { ...goal, ...draft } : goal)),
       }))
     }
-
     if (selection.type === 'step') {
       setBoard((current) => ({
         ...current,
         steps: current.steps.map((step) => (step.id === selection.id ? { ...step, ...draft } : step)),
       }))
     }
-
     if (selection.type === 'release') {
       setBoard((current) => ({
         ...current,
-        releases: current.releases.map((release) =>
-          release.id === selection.id ? { ...release, ...draft } : release,
-        ),
+        releases: current.releases.map((release) => (release.id === selection.id ? { ...release, ...draft } : release)),
       }))
     }
-
     if (selection.type === 'story') {
       setBoard((current) => ({
         ...current,
@@ -370,46 +318,40 @@ function App() {
     setSelection(null)
   }
 
-  function deleteSelection() {
-    if (!selection || selection.mode !== 'edit') return
-
-    if (selection.type === 'goal') {
+  function deleteEntity(type, id) {
+    if (type === 'goal') {
       setBoard((current) => {
-        const stepIds = current.steps.filter((step) => step.goalId === selection.id).map((step) => step.id)
-
+        const stepIds = current.steps.filter((step) => step.goalId === id).map((step) => step.id)
         return {
-          goals: current.goals.filter((goal) => goal.id !== selection.id),
-          steps: current.steps.filter((step) => step.goalId !== selection.id),
+          goals: current.goals.filter((goal) => goal.id !== id),
+          steps: current.steps.filter((step) => step.goalId !== id),
           releases: current.releases,
           stories: current.stories.filter((story) => !stepIds.includes(story.stepId)),
         }
       })
     }
-
-    if (selection.type === 'step') {
+    if (type === 'step') {
       setBoard((current) => ({
         ...current,
-        steps: current.steps.filter((step) => step.id !== selection.id),
-        stories: current.stories.filter((story) => story.stepId !== selection.id),
+        steps: current.steps.filter((step) => step.id !== id),
+        stories: current.stories.filter((story) => story.stepId !== id),
+      }))
+    }
+    if (type === 'release') {
+      setBoard((current) => ({
+        ...current,
+        releases: current.releases.filter((release) => release.id !== id),
+        stories: current.stories.map((story) => (story.releaseId === id ? { ...story, releaseId: null } : story)),
+      }))
+    }
+    if (type === 'story') {
+      setBoard((current) => ({
+        ...current,
+        stories: current.stories.filter((story) => story.id !== id),
       }))
     }
 
-    if (selection.type === 'release') {
-      setBoard((current) => ({
-        ...current,
-        releases: current.releases.filter((release) => release.id !== selection.id),
-        stories: current.stories.filter((story) => story.releaseId !== selection.id),
-      }))
-    }
-
-    if (selection.type === 'story') {
-      setBoard((current) => ({
-        ...current,
-        stories: current.stories.filter((story) => story.id !== selection.id),
-      }))
-    }
-
-    setSelection(null)
+    setSelection((current) => (current?.id === id && current?.type === type ? null : current))
   }
 
   function startDrag(type, id) {
@@ -422,17 +364,18 @@ function App() {
 
   function dropGoal(targetGoalId) {
     if (!dragState || dragState.type !== 'goal') return
+    setBoard((current) => ({ ...current, goals: moveGoal(current.goals, dragState.id, targetGoalId) }))
+    setDragState(null)
+  }
 
-    setBoard((current) => ({
-      ...current,
-      goals: moveBefore(current.goals, dragState.id, targetGoalId),
-    }))
+  function dropGoalToEnd() {
+    if (!dragState || dragState.type !== 'goal') return
+    setBoard((current) => ({ ...current, goals: moveToEnd(current.goals, dragState.id) }))
     setDragState(null)
   }
 
   function dropStepOnStep(targetStep) {
     if (!dragState || dragState.type !== 'step') return
-
     setBoard((current) => ({
       ...current,
       steps: moveBefore(current.steps, dragState.id, targetStep.id, { goalId: targetStep.goalId }),
@@ -442,21 +385,13 @@ function App() {
 
   function dropStepOnGoal(goalId) {
     if (!dragState || dragState.type !== 'step') return
-
-    setBoard((current) => ({
-      ...current,
-      steps: appendStepToGoal(current.steps, dragState.id, goalId),
-    }))
+    setBoard((current) => ({ ...current, steps: appendStepToGoal(current.steps, dragState.id, goalId) }))
     setDragState(null)
   }
 
   function dropStory(target) {
     if (!dragState || dragState.type !== 'story') return
-
-    setBoard((current) => ({
-      ...current,
-      stories: moveStory(current.stories, dragState.id, target),
-    }))
+    setBoard((current) => ({ ...current, stories: moveStory(current.stories, dragState.id, target) }))
     setDragState(null)
   }
 
@@ -483,14 +418,14 @@ function App() {
                     const span = Math.max(board.steps.filter((step) => step.goalId === goal.id).length, 0) + 1
 
                     return (
-                      <button
+                      <CardButton
                         key={goal.id}
-                        type="button"
-                        draggable
-                        className={`card goal-card ${selection?.id === goal.id ? 'is-active' : ''}`}
-                        data-color={goal.color}
+                        className={`goal-card ${selection?.id === goal.id ? 'is-active' : ''}`}
+                        dataColor={goal.color}
                         style={{ gridColumn: `span ${span}` }}
                         onClick={() => openGoalEdit(goal)}
+                        onDelete={() => deleteEntity('goal', goal.id)}
+                        draggable
                         onDragStart={() => startDrag('goal', goal.id)}
                         onDragEnd={endDrag}
                         onDragOver={(event) => event.preventDefault()}
@@ -499,11 +434,14 @@ function App() {
                           dropGoal(goal.id)
                         }}
                       >
-                        <span>{goal.title}</span>
-                      </button>
+                        {goal.title}
+                      </CardButton>
                     )
                   })}
-                  <AddSlot label="Add goal" onClick={openGoalCreate} />
+                  <AddSlot label="Add goal" onClick={openGoalCreate} onDragOver={(event) => event.preventDefault()} onDrop={(event) => {
+                    event.preventDefault()
+                    dropGoalToEnd()
+                  }} />
                 </div>
               </section>
 
@@ -512,12 +450,12 @@ function App() {
                 <div className="lane-grid" style={{ gridTemplateColumns: headerGridColumns }}>
                   {columns.map((column) =>
                     column.type === 'step' ? (
-                      <button
+                      <CardButton
                         key={column.id}
-                        type="button"
-                        draggable
-                        className={`card step-card ${selection?.id === column.step.id ? 'is-active' : ''}`}
+                        className={`step-card ${selection?.id === column.step.id ? 'is-active' : ''}`}
                         onClick={() => openStepEdit(column.step)}
+                        onDelete={() => deleteEntity('step', column.step.id)}
+                        draggable
                         onDragStart={() => startDrag('step', column.step.id)}
                         onDragEnd={endDrag}
                         onDragOver={(event) => event.preventDefault()}
@@ -526,8 +464,8 @@ function App() {
                           dropStepOnStep(column.step)
                         }}
                       >
-                        <span>{column.step.title}</span>
-                      </button>
+                        {column.step.title}
+                      </CardButton>
                     ) : (
                       <AddSlot
                         key={column.id}
@@ -545,6 +483,29 @@ function App() {
                 </div>
               </section>
 
+              <section className="lane-section">
+                <div className="lane-caption">Unassigned stories</div>
+                <div className="story-grid" style={{ gridTemplateColumns: releaseGridColumns }}>
+                  {columns.map((column) =>
+                    column.type === 'step' ? (
+                      <StoryCell
+                        key={`top-${column.id}`}
+                        stories={board.stories.filter((story) => story.stepId === column.step.id && story.releaseId == null)}
+                        selection={selection}
+                        onStoryClick={openStoryEdit}
+                        onStoryCreate={() => openStoryCreate(null, column.step.id)}
+                        onStoryDrop={(target) => dropStory({ ...target, releaseId: null, stepId: column.step.id })}
+                        onDragStart={startDrag}
+                        onDragEnd={endDrag}
+                        onDeleteStory={(id) => deleteEntity('story', id)}
+                      />
+                    ) : (
+                      <StorySpacer key={`top-${column.id}`} />
+                    ),
+                  )}
+                </div>
+              </section>
+
               <section className="release-create-row">
                 <AddSlot label="Add release" onClick={openReleaseCreate} stretch />
               </section>
@@ -558,11 +519,13 @@ function App() {
                   releaseGridColumns={releaseGridColumns}
                   selection={selection}
                   onReleaseClick={() => openReleaseEdit(release)}
+                  onReleaseDelete={() => deleteEntity('release', release.id)}
                   onStoryClick={openStoryEdit}
                   onStoryCreate={openStoryCreate}
                   onStoryDrop={dropStory}
                   onDragStart={startDrag}
                   onDragEnd={endDrag}
+                  onDeleteStory={(id) => deleteEntity('story', id)}
                 />
               ))}
             </div>
@@ -578,27 +541,19 @@ function App() {
           </div>
 
           <form className="details-form" onSubmit={submitSelection}>
-            <PanelFields
-              selection={selection}
-              goals={board.goals}
-              steps={realSteps}
-              releases={board.releases}
-              onChange={updateDraft}
-            />
+            <PanelFields selection={selection} goals={board.goals} steps={realSteps} releases={board.releases} onChange={updateDraft} />
 
             <div className="panel-actions">
-              <button type="submit" className="primary-button">
-                {buttonLabel(selection.mode)}
-              </button>
-              <button type="button" className="ghost-button" onClick={() => setSelection(null)}>
-                Cancel
-              </button>
+              <button type="submit" className="primary-button">{buttonLabel(selection.mode)}</button>
+              <button type="button" className="ghost-button" onClick={() => setSelection(null)}>Cancel</button>
             </div>
 
             {selection.mode === 'edit' ? (
-              <button type="button" className="danger-button" onClick={deleteSelection}>
-                Delete
-              </button>
+              <div className="danger-zone">
+                <button type="button" className="danger-link" onClick={() => deleteEntity(selection.type, selection.id)}>
+                  Delete this {selection.type}
+                </button>
+              </div>
             ) : null}
           </form>
         </aside>
@@ -614,43 +569,22 @@ function ReleaseBand({
   releaseGridColumns,
   selection,
   onReleaseClick,
+  onReleaseDelete,
   onStoryClick,
   onStoryCreate,
   onStoryDrop,
   onDragStart,
   onDragEnd,
+  onDeleteStory,
 }) {
   return (
     <section className="release-band">
-      <div className="story-grid story-grid-top" style={{ gridTemplateColumns: releaseGridColumns }}>
-        {columns.map((column) =>
-          column.type === 'step' ? (
-            <StoryCell
-              key={`${release.id}-${column.id}-above`}
-              stories={stories.filter(
-                (story) =>
-                  story.releaseId === release.id && story.stepId === column.step.id && story.side === 'above',
-              )}
-              selection={selection}
-              onStoryClick={onStoryClick}
-              onStoryCreate={() => onStoryCreate(release.id, column.step.id, 'above')}
-              onStoryDrop={(target) => onStoryDrop({ ...target, releaseId: release.id, stepId: column.step.id, side: 'above' })}
-              onDragStart={onDragStart}
-              onDragEnd={onDragEnd}
-            />
-          ) : (
-            <div key={`${release.id}-${column.id}-above`} className="story-cell story-cell-empty" />
-          ),
-        )}
-      </div>
-
       <div className="release-line-wrap">
-        <button
-          type="button"
-          className={`release-label ${selection?.id === release.id ? 'is-active' : ''}`}
-          onClick={onReleaseClick}
-        >
+        <button type="button" className={`release-label ${selection?.id === release.id ? 'is-active' : ''}`} onClick={onReleaseClick}>
           {release.title}
+        </button>
+        <button type="button" className="card-delete release-delete" onClick={onReleaseDelete} aria-label={`Delete ${release.title}`}>
+          ×
         </button>
         <div className="release-line" />
       </div>
@@ -659,25 +593,27 @@ function ReleaseBand({
         {columns.map((column) =>
           column.type === 'step' ? (
             <StoryCell
-              key={`${release.id}-${column.id}-below`}
-              stories={stories.filter(
-                (story) =>
-                  story.releaseId === release.id && story.stepId === column.step.id && story.side === 'below',
-              )}
+              key={`${release.id}-${column.id}`}
+              stories={stories.filter((story) => story.releaseId === release.id && story.stepId === column.step.id)}
               selection={selection}
               onStoryClick={onStoryClick}
-              onStoryCreate={() => onStoryCreate(release.id, column.step.id, 'below')}
-              onStoryDrop={(target) => onStoryDrop({ ...target, releaseId: release.id, stepId: column.step.id, side: 'below' })}
+              onStoryCreate={() => onStoryCreate(release.id, column.step.id)}
+              onStoryDrop={(target) => onStoryDrop({ ...target, releaseId: release.id, stepId: column.step.id })}
               onDragStart={onDragStart}
               onDragEnd={onDragEnd}
+              onDeleteStory={onDeleteStory}
             />
           ) : (
-            <div key={`${release.id}-${column.id}-below`} className="story-cell story-cell-empty" />
+            <StorySpacer key={`${release.id}-${column.id}`} />
           ),
         )}
       </div>
     </section>
   )
+}
+
+function StorySpacer() {
+  return <div className="story-cell story-spacer" aria-hidden="true" />
 }
 
 function StoryCell({
@@ -688,6 +624,7 @@ function StoryCell({
   onStoryDrop,
   onDragStart,
   onDragEnd,
+  onDeleteStory,
 }) {
   return (
     <div
@@ -699,13 +636,13 @@ function StoryCell({
       }}
     >
       {stories.map((story) => (
-        <button
+        <CardButton
           key={story.id}
-          type="button"
-          draggable
-          className={`card story-card ${selection?.id === story.id ? 'is-active' : ''}`}
-          data-priority={story.priority}
+          className={`story-card ${selection?.id === story.id ? 'is-active' : ''}`}
+          dataPriority={story.priority}
           onClick={() => onStoryClick(story)}
+          onDelete={() => onDeleteStory(story.id)}
+          draggable
           onDragStart={() => onDragStart('story', story.id)}
           onDragEnd={onDragEnd}
           onDragOver={(event) => event.preventDefault()}
@@ -713,13 +650,40 @@ function StoryCell({
             event.preventDefault()
             onStoryDrop({ beforeStoryId: story.id })
           }}
+          footer={<span className="story-meta">{story.priority}</span>}
         >
           <span className="story-title">{story.title}</span>
-          <span className="story-meta">{story.priority}</span>
-        </button>
+        </CardButton>
       ))}
       <AddSlot label="Add story" onClick={onStoryCreate} compact />
     </div>
+  )
+}
+
+function CardButton({
+  children,
+  className,
+  dataColor,
+  dataPriority,
+  onClick,
+  onDelete,
+  footer,
+  style,
+  ...dragProps
+}) {
+  return (
+    <button type="button" className={`card ${className}`.trim()} data-color={dataColor} data-priority={dataPriority} onClick={onClick} style={style} {...dragProps}>
+      {onDelete ? (
+        <span className="card-delete" onClick={(event) => {
+          event.stopPropagation()
+          onDelete()
+        }}>
+          ×
+        </span>
+      ) : null}
+      <span>{children}</span>
+      {footer}
+    </button>
   )
 }
 
@@ -745,11 +709,7 @@ function PanelFields({ selection, goals, steps, releases, onChange }) {
     <>
       <label>
         Title
-        <textarea
-          rows={type === 'story' ? 4 : 3}
-          value={draft.title}
-          onChange={(event) => onChange({ title: event.target.value })}
-        />
+        <textarea rows={type === 'story' ? 4 : 3} value={draft.title} onChange={(event) => onChange({ title: event.target.value })} />
       </label>
 
       {type === 'goal' ? (
@@ -757,9 +717,7 @@ function PanelFields({ selection, goals, steps, releases, onChange }) {
           Color
           <select value={draft.color} onChange={(event) => onChange({ color: event.target.value })}>
             {goalPalette.map((color) => (
-              <option key={color} value={color}>
-                {color}
-              </option>
+              <option key={color} value={color}>{color}</option>
             ))}
           </select>
         </label>
@@ -770,9 +728,7 @@ function PanelFields({ selection, goals, steps, releases, onChange }) {
           Goal
           <select value={draft.goalId} onChange={(event) => onChange({ goalId: event.target.value })}>
             {goals.map((goal) => (
-              <option key={goal.id} value={goal.id}>
-                {goal.title}
-              </option>
+              <option key={goal.id} value={goal.id}>{goal.title}</option>
             ))}
           </select>
         </label>
@@ -784,29 +740,18 @@ function PanelFields({ selection, goals, steps, releases, onChange }) {
             Step
             <select value={draft.stepId} onChange={(event) => onChange({ stepId: event.target.value })}>
               {steps.map((step) => (
-                <option key={step.id} value={step.id}>
-                  {step.title}
-                </option>
+                <option key={step.id} value={step.id}>{step.title}</option>
               ))}
             </select>
           </label>
 
           <label>
             Release
-            <select value={draft.releaseId} onChange={(event) => onChange({ releaseId: event.target.value })}>
+            <select value={draft.releaseId ?? ''} onChange={(event) => onChange({ releaseId: event.target.value || null })}>
+              <option value="">Unassigned</option>
               {releases.map((release) => (
-                <option key={release.id} value={release.id}>
-                  {release.title}
-                </option>
+                <option key={release.id} value={release.id}>{release.title}</option>
               ))}
-            </select>
-          </label>
-
-          <label>
-            Placement
-            <select value={draft.side} onChange={(event) => onChange({ side: event.target.value })}>
-              <option value="above">Above line</option>
-              <option value="below">Below line</option>
             </select>
           </label>
 
@@ -826,29 +771,16 @@ function PanelFields({ selection, goals, steps, releases, onChange }) {
 
 function normalizeDraft(type, draft) {
   const title = draft.title.trim()
+  if (!title) return null
 
-  if (!title) {
-    return null
-  }
-
-  if (type === 'goal') {
-    return { title, color: draft.color || 'sky' }
-  }
-
-  if (type === 'step') {
-    return { title, goalId: draft.goalId }
-  }
-
-  if (type === 'release') {
-    return { title }
-  }
-
+  if (type === 'goal') return { title, color: draft.color || 'sky' }
+  if (type === 'step') return { title, goalId: draft.goalId }
+  if (type === 'release') return { title }
   if (type === 'story') {
     return {
       title,
       stepId: draft.stepId,
-      releaseId: draft.releaseId,
-      side: draft.side || 'below',
+      releaseId: draft.releaseId || null,
       priority: draft.priority || 'medium',
     }
   }
