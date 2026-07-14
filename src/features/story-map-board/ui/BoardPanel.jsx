@@ -3,10 +3,11 @@ import { StepsLane } from './StepsLane'
 import { ReleaseSection } from './ReleaseSection'
 import { CARD_WIDTH, COLUMN_GAP } from '../../../entities/story-map/domain/constants'
 
-export function BoardPanel({ storyMap, columns, selection, actions }) {
+export function BoardPanel({ storyMap, columns, selection, persistence, actions }) {
   const headerGridColumns = `repeat(${Math.max(columns.length + 1, 1)}, ${CARD_WIDTH}px)`
   const storyGridColumns = `repeat(${Math.max(columns.length, 1)}, ${CARD_WIDTH}px)`
   const boardWidth = Math.max((columns.length + 1) * (CARD_WIDTH + COLUMN_GAP) - COLUMN_GAP, CARD_WIDTH)
+  const saveLabel = persistence.saveStatus === 'saving' ? 'Saving...' : persistence.isDirty ? 'Save *' : 'Save'
 
   return (
     <main className="workspace">
@@ -15,8 +16,33 @@ export function BoardPanel({ storyMap, columns, selection, actions }) {
           <div>
             <p className="eyebrow">Story mapping</p>
             <h1>Plan goals, steps and stories on one board.</h1>
+            <div className="board-status">
+              <span>Board: {persistence.currentBoardId}</span>
+              {persistence.error ? <span className="board-status-error">{persistence.error}</span> : null}
+            </div>
           </div>
           <div className="board-header-actions">
+            <select
+              className="board-select"
+              value={persistence.selectedBoardId}
+              onChange={(event) => actions.selectBoard(event.target.value)}
+              disabled={persistence.loadStatus === 'loading'}
+            >
+              {persistence.boards.map((board) => (
+                <option key={board.id} value={board.id}>
+                  {board.name}
+                </option>
+              ))}
+            </select>
+            <button type="button" className="ghost-button" onClick={actions.loadSelectedBoard} disabled={!persistence.selectedBoardId || persistence.loadStatus === 'loading'}>
+              Load
+            </button>
+            <button type="button" className="primary-button" onClick={actions.saveBoard} disabled={persistence.saveStatus === 'saving'}>
+              {saveLabel}
+            </button>
+            <button type="button" className="ghost-button" onClick={actions.saveBoardAs} disabled={persistence.saveStatus === 'saving'}>
+              Save as
+            </button>
             <button type="button" className="ghost-button" onClick={actions.openReleaseCreate}>
               Add release
             </button>

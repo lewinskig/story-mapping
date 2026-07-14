@@ -6,11 +6,22 @@ import { getStoryMapEntity } from '../../entities/story-map/domain/services/enti
 import { goalPalette, PLANNED_RELEASE_ID } from '../../entities/story-map/domain/constants'
 import {
   selectStoryMap,
+  selectStoryMapBoardId,
   selectStoryMapColumns,
+  selectStoryMapError,
+  selectStoryMapIsDirty,
+  selectStoryMapLoadStatus,
   selectStoryMapReleases,
+  selectStoryMapSaveStatus,
   selectStoryMapSteps,
 } from '../../entities/story-map/domain/selectors/storyMapSelectors'
 import {
+  boardLoaded,
+  boardLoadFailed,
+  boardLoadStarted,
+  boardSaveFailed,
+  boardSaveStarted,
+  boardSaveSucceeded,
   goalAdded,
   goalDeleted,
   goalMoved,
@@ -35,6 +46,7 @@ import {
   selectionSet,
   selectionSynced,
 } from '../../entities/story-map/application/storyMapUiSlice'
+import { createBoard, listBoards, loadBoard, saveBoard as apiSaveBoard } from '../../entities/story-map/infrastructure/persistence/boardApi'
 
 function createSelection(mode, type, draft, meta = {}) {
   return { mode, type, draft, ...meta }
@@ -62,11 +74,48 @@ function normalizeDraft(type, draft) {
 export function StoryMapPage() {
   const dispatch = useDispatch()
   const storyMap = useSelector(selectStoryMap)
+  const currentBoardId = useSelector(selectStoryMapBoardId)
+  const loadStatus = useSelector(selectStoryMapLoadStatus)
+  const saveStatus = useSelector(selectStoryMapSaveStatus)
+  const persistenceError = useSelector(selectStoryMapError)
+  const isDirty = useSelector(selectStoryMapIsDirty)
   const columns = useSelector(selectStoryMapColumns)
   const steps = useSelector(selectStoryMapSteps)
   const releases = useSelector(selectStoryMapReleases)
   const selection = useSelector(selectSelection)
   const [dragState, setDragState] = useState(null)
+  const [boards, setBoards] = useState([])
+  const [selectedBoardId, setSelectedBoardId] = useState('default')
+
+  useEffect(() => {
+    let isMounted = true
+
+    async function initializeBoard() {
+      dispatch(boardLoadStarted())
+
+      try {
+        const boardList = await listBoards()
+        if (!isMounted) return
+
+        setBoards(boardList.boards)
+        const initialBoardId = boardList.defaultBoardId || boardList.boards[0]?.id || 'default'
+        setSelectedBoardId(initialBoardId)
+
+        const payload = await loadBoard(initialBoardId)
+        if (!isMounted) return
+
+        dispatch(boardLoaded(payload))
+      } catch (error) {
+        if (isMounted) dispatch(boardLoadFailed(error.message))
+      }
+    }
+
+    initializeBoard()
+
+    return () => {
+      isMounted = false
+    }
+  }, [dispatch])
 
   useEffect(() => {
     if (!selection || selection.mode !== 'edit') return
@@ -79,6 +128,54 @@ export function StoryMapPage() {
 
     dispatch(selectionSynced(liveEntity))
   }, [dispatch, selection?.id, selection?.mode, selection?.type, storyMap])
+
+  async function refreshBoards(nextSelectedId = selectedBoardId) {
+    const boardList = await listBoards()
+    setBoards(boardList.boards)
+    setSelectedBoardId(nextSelectedId)
+  }
+
+  async function loadSelectedBoard() {
+    if (!selectedBoardId) return
+
+    dispatch(boardLoadStarted())
+    dispatch(selectionCleared())
+
+    try {
+      const payload = await loadBoard(selectedBoardId)
+      dispatch(boardLoaded(payload))
+    } catch (error) {
+      dispatch(boardLoadFailed(error.message))
+    }
+  }
+
+  async function saveCurrentBoard() {
+    dispatch(boardSaveStarted())
+
+    try {
+      const payload = await apiSaveBoard(currentBoardId, storyMap)
+      dispatch(boardSaveSucceeded({ id: payload.id }))
+      await refreshBoards(payload.id)
+    } catch (error) {
+      dispatch(boardSaveFailed(error.message))
+    }
+  }
+
+  async function saveCurrentBoardAs() {
+    const boardName = window.prompt('Board file name', currentBoardId)
+    if (!boardName) return
+
+    dispatch(boardSaveStarted())
+
+    try {
+      const payload = await createBoard(boardName, storyMap)
+      dispatch(boardSaveSucceeded({ id: payload.id }))
+      dispatch(boardLoaded(payload))
+      await refreshBoards(payload.id)
+    } catch (error) {
+      dispatch(boardSaveFailed(error.message))
+    }
+  }
 
   function submitSelection(event) {
     event.preventDefault()
@@ -173,6 +270,10 @@ export function StoryMapPage() {
       dispatch(selectionCleared())
       setDragState(null)
     },
+    selectBoard: setSelectedBoardId,
+    loadSelectedBoard,
+    saveBoard: saveCurrentBoard,
+    saveBoardAs: saveCurrentBoardAs,
     openGoalCreate,
     openGoalEdit,
     deleteGoal,
@@ -212,7 +313,21 @@ export function StoryMapPage() {
 
   return (
     <div className={'app-shell ' + (selection ? 'has-sidebar' : '')}>
-      <BoardPanel storyMap={storyMap} columns={columns} selection={selection} actions={actions} />
+      <BoardPanel
+        storyMap={storyMap}
+        columns={columns}
+        selection={selection}
+        persistence={{
+          boards,
+          currentBoardId,
+          selectedBoardId,
+          loadStatus,
+          saveStatus,
+          error: persistenceError,
+          isDirty,
+        }}
+        actions={actions}
+      />
       <DetailsPanel
         selection={selection}
         goals={storyMap.goals}
