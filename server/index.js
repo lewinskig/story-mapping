@@ -21,10 +21,7 @@ app.get('/api/boards', async (_request, response, next) => {
   try {
     await ensureBoardsDir()
     const boards = await listBoards()
-    response.json({
-      boards,
-      defaultBoardId: boards.some((board) => board.id === 'default') ? 'default' : boards[0]?.id || null,
-    })
+    response.json({ boards })
   } catch (error) {
     next(error)
   }
@@ -32,8 +29,8 @@ app.get('/api/boards', async (_request, response, next) => {
 
 app.post('/api/boards', async (request, response, next) => {
   try {
-    const id = normalizeBoardId(request.body?.id || request.body?.name || 'board')
     const board = request.body?.board
+    const id = normalizeBoardId(request.body?.id || board?.name || 'board')
 
     if (!isValidStoryMap(board)) {
       response.status(400).json({ error: 'Invalid story map payload.' })
@@ -56,7 +53,8 @@ app.get('/api/boards/:id', async (request, response, next) => {
   try {
     const id = normalizeBoardId(request.params.id)
     const board = await readBoard(id)
-    response.json({ id, board })
+    const payloadBoard = id === 'default' ? board : { ...board, name: getBoardName(board, id) }
+    response.json({ id: id === 'default' ? null : id, board: payloadBoard })
   } catch (error) {
     if (error.code === 'ENOENT') {
       response.status(404).json({ error: 'Board not found.' })
@@ -110,7 +108,7 @@ app.use((error, _request, response, _next) => {
 })
 
 app.listen(port, () => {
-  console.log(`Story mapping API listening on http://127.0.0.1:${port}`)
+  console.log('Story mapping API listening on http://127.0.0.1:' + port)
 })
 
 async function ensureBoardsDir() {
@@ -124,16 +122,19 @@ async function listBoards() {
       .filter((entry) => entry.isFile() && entry.name.endsWith('.json'))
       .map(async (entry) => {
         const id = path.basename(entry.name, '.json')
+        if (id === 'default') return null
+
+        const board = await readBoard(id)
         const stats = await fs.stat(boardPath(id))
-        return { id, name: boardNameFromId(id), updatedAt: stats.mtime.toISOString() }
+        return {
+          id,
+          name: getBoardName(board, id),
+          updatedAt: stats.mtime.toISOString(),
+        }
       }),
   )
 
-  return boards.sort((left, right) => {
-    if (left.id === 'default') return -1
-    if (right.id === 'default') return 1
-    return left.id.localeCompare(right.id)
-  })
+  return boards.filter(Boolean).sort((left, right) => left.name.localeCompare(right.name))
 }
 
 async function readBoard(id) {
@@ -169,6 +170,11 @@ function normalizeBoardId(value) {
   return normalized || 'board'
 }
 
+function getBoardName(board, id) {
+  const fromBoard = typeof board?.name === 'string' ? board.name.trim() : ''
+  return fromBoard || boardNameFromId(id)
+}
+
 function boardNameFromId(id) {
   return id
     .split('-')
@@ -178,5 +184,11 @@ function boardNameFromId(id) {
 }
 
 function isValidStoryMap(value) {
-  return Boolean(value && Array.isArray(value.goals) && Array.isArray(value.releases))
+  return Boolean(
+    value &&
+      typeof value === 'object' &&
+      (value.name === undefined || typeof value.name === 'string') &&
+      Array.isArray(value.goals) &&
+      Array.isArray(value.releases),
+  )
 }

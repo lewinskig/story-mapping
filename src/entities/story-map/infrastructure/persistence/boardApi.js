@@ -1,29 +1,29 @@
 export async function listBoards() {
-  const payload = await request('/api/boards')
-  return payload
+  return request('/api/boards')
 }
 
 export async function loadBoard(id) {
-  const payload = await request('/api/boards/' + encodeURIComponent(id))
-  return payload
+  return request('/api/boards/' + encodeURIComponent(id))
+}
+
+export async function loadTemplateBoard() {
+  return loadBoard('default')
 }
 
 export async function saveBoard(id, board) {
-  const payload = await request('/api/boards/' + encodeURIComponent(id), {
+  return request('/api/boards/' + encodeURIComponent(id), {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ board }),
   })
-  return payload
 }
 
 export async function createBoard(id, board) {
-  const payload = await request('/api/boards', {
+  return request('/api/boards', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ id, board }),
   })
-  return payload
 }
 
 async function request(url, options) {

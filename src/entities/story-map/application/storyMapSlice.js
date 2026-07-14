@@ -19,9 +19,13 @@ import {
   updateStoryInStoryMap,
 } from '../domain/operations/storyMapOperations'
 
+function cloneDefaultStoryMap() {
+  return JSON.parse(JSON.stringify(defaultStoryMap))
+}
+
 const initialState = {
-  board: defaultStoryMap,
-  boardId: 'default',
+  board: cloneDefaultStoryMap(),
+  boardId: null,
   loadStatus: 'idle',
   saveStatus: 'idle',
   error: null,
@@ -43,7 +47,7 @@ const storyMapSlice = createSlice({
     },
     boardLoaded: (state, action) => {
       state.board = action.payload.board
-      state.boardId = action.payload.id
+      state.boardId = action.payload.id ?? null
       state.loadStatus = 'ready'
       state.saveStatus = 'idle'
       state.error = null
@@ -58,7 +62,7 @@ const storyMapSlice = createSlice({
       state.error = null
     },
     boardSaveSucceeded: (state, action) => {
-      state.boardId = action.payload?.id || state.boardId
+      state.boardId = action.payload?.id ?? state.boardId
       state.saveStatus = 'saved'
       state.error = null
       state.isDirty = false
@@ -67,9 +71,16 @@ const storyMapSlice = createSlice({
       state.saveStatus = 'failed'
       state.error = action.payload
     },
-    storyMapReset: (state) => {
-      state.board = defaultStoryMap
+    boardTitleUpdated: (state, action) => {
+      state.board.name = action.payload
       markChanged(state)
+    },
+    storyMapReset: (state) => {
+      state.board = cloneDefaultStoryMap()
+      state.boardId = null
+      state.saveStatus = 'idle'
+      state.error = null
+      state.isDirty = false
     },
     goalAdded: (state, action) => {
       state.board = addGoalToStoryMap(state.board, action.payload)
@@ -145,6 +156,7 @@ export const {
   boardSaveStarted,
   boardSaveSucceeded,
   boardSaveFailed,
+  boardTitleUpdated,
   storyMapReset,
   goalAdded,
   goalUpdated,

@@ -1,53 +1,37 @@
 import { GoalsLane } from './GoalsLane'
 import { StepsLane } from './StepsLane'
 import { ReleaseSection } from './ReleaseSection'
+import { EditableBoardTitle } from './EditableBoardTitle'
 import { CARD_WIDTH, COLUMN_GAP } from '../../../entities/story-map/domain/constants'
 
 export function BoardPanel({ storyMap, columns, selection, persistence, actions }) {
   const headerGridColumns = `repeat(${Math.max(columns.length + 1, 1)}, ${CARD_WIDTH}px)`
   const storyGridColumns = `repeat(${Math.max(columns.length, 1)}, ${CARD_WIDTH}px)`
   const boardWidth = Math.max((columns.length + 1) * (CARD_WIDTH + COLUMN_GAP) - COLUMN_GAP, CARD_WIDTH)
-  const saveLabel = persistence.saveStatus === 'saving' ? 'Saving...' : persistence.isDirty ? 'Save *' : 'Save'
+  const saveLabel = persistence.saveStatus === 'saving' ? 'Saving...' : persistence.isDirty || !persistence.currentBoardId ? 'Save *' : 'Save'
+  const boardStateLabel = persistence.currentBoardId ? 'Saved board' : 'Unsaved draft'
 
   return (
     <main className="workspace">
       <div className="board-shell">
         <header className="board-header">
-          <div>
+          <div className="board-header-copy">
             <p className="eyebrow">Story mapping</p>
-            <h1>Plan goals, steps and stories on one board.</h1>
+            <EditableBoardTitle value={storyMap.name || ''} onChange={actions.updateBoardTitle} disabled={persistence.loadStatus === 'loading'} />
             <div className="board-status">
-              <span>Board: {persistence.currentBoardId}</span>
+              <span>{boardStateLabel}</span>
               {persistence.error ? <span className="board-status-error">{persistence.error}</span> : null}
             </div>
           </div>
           <div className="board-header-actions">
-            <select
-              className="board-select"
-              value={persistence.selectedBoardId}
-              onChange={(event) => actions.selectBoard(event.target.value)}
-              disabled={persistence.loadStatus === 'loading'}
-            >
-              {persistence.boards.map((board) => (
-                <option key={board.id} value={board.id}>
-                  {board.name}
-                </option>
-              ))}
-            </select>
-            <button type="button" className="ghost-button" onClick={actions.loadSelectedBoard} disabled={!persistence.selectedBoardId || persistence.loadStatus === 'loading'}>
-              Load
+            <button type="button" className="ghost-button" onClick={actions.newBoard} disabled={persistence.loadStatus === 'loading' || persistence.saveStatus === 'saving'}>
+              New
             </button>
             <button type="button" className="primary-button" onClick={actions.saveBoard} disabled={persistence.saveStatus === 'saving'}>
               {saveLabel}
             </button>
-            <button type="button" className="ghost-button" onClick={actions.saveBoardAs} disabled={persistence.saveStatus === 'saving'}>
-              Save as
-            </button>
-            <button type="button" className="ghost-button" onClick={actions.openReleaseCreate}>
-              Add release
-            </button>
-            <button type="button" className="ghost-button" onClick={actions.resetBoard}>
-              Reset sample board
+            <button type="button" className="ghost-button" onClick={actions.loadBoard} disabled={persistence.loadStatus === 'loading' || persistence.saveStatus === 'saving'}>
+              Load
             </button>
           </div>
         </header>
@@ -77,6 +61,12 @@ export function BoardPanel({ storyMap, columns, selection, persistence, actions 
               onEndDrag={actions.endDrag}
               onDropStep={actions.dropStep}
             />
+
+            <div className="release-toolbar">
+              <button type="button" className="ghost-button" onClick={actions.openReleaseCreate}>
+                Add release
+              </button>
+            </div>
 
             {storyMap.releases.map((release) => (
               <ReleaseSection
